@@ -9,8 +9,9 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         val scheduler = AlarmScheduler(context)
         val fireTime = scheduler.getScheduledFireTime()
-        if (fireTime > System.currentTimeMillis()) {
-            val remainingMs = fireTime - System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        if (fireTime > now) {
+            val remainingMs = fireTime - now
             val remainingMinutes = (remainingMs / 60_000L).toInt().coerceAtLeast(1)
             scheduler.schedule(remainingMinutes)
         }
