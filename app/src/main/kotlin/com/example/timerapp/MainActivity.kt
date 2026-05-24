@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
     private fun requestExactAlarmPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(AlarmManager::class.java)
-            if (!alarmManager.canScheduleExactAlarms()) {
+            if (alarmManager?.canScheduleExactAlarms() == false) {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
             }
         }

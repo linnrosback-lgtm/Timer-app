@@ -144,7 +144,7 @@ private fun PresetBottomSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             Button(
-                onClick = { onSave(label.trim(), durationText.toInt()) },
+                onClick = { onSave(label.trim(), durationText.toIntOrNull() ?: 0) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = isValid
             ) {
