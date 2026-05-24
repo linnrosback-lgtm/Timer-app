@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.timerapp.alarm.AlarmScheduler
 import io.mockk.*
+import io.mockk.unmockkAll
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -14,6 +16,11 @@ class AlarmSchedulerTest {
     private val alarmManager = mockk<AlarmManager>(relaxed = true)
     private val prefs = mockk<SharedPreferences>(relaxed = true)
     private val prefsEditor = mockk<SharedPreferences.Editor>(relaxed = true)
+
+    @After
+    fun teardown() {
+        unmockkAll()
+    }
 
     @Before
     fun setup() {
