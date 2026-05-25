@@ -2,8 +2,10 @@ package com.example.timerapp
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestExactAlarmPermissionIfNeeded()
         requestNotificationPermissionIfNeeded()
+        requestFullScreenIntentPermissionIfNeeded()
         setContent {
             TimerAppTheme {
                 HomeScreen(viewModel = viewModel)
@@ -51,6 +54,18 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun requestFullScreenIntentPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        if (!nm.canUseFullScreenIntent()) {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
         }
     }
 }
