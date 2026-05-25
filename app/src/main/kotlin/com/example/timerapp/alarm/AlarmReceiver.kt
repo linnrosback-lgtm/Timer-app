@@ -53,12 +53,13 @@ class AlarmReceiver : BroadcastReceiver() {
         ).apply {
             description = "Timer finished alerts"
             enableVibration(true)
+            vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 400)
         }
         nm.createNotificationChannel(channel)
     }
 
     companion object {
-        const val ALARM_CHANNEL_ID = "timer_alarm"
+        const val ALARM_CHANNEL_ID = "timer_alarm_v2"
         const val ALARM_NOTIF_ID = 2002
     }
 }
