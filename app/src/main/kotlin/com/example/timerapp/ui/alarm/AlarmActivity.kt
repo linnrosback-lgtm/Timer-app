@@ -15,6 +15,7 @@ import com.example.timerapp.ui.theme.TimerAppTheme
 class AlarmActivity : ComponentActivity() {
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
+    private var vibrateHandler: Handler? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +71,15 @@ class AlarmActivity : ComponentActivity() {
             getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
         vibrator = v
-        v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 0))
+        val handler = Handler(Looper.getMainLooper())
+        vibrateHandler = handler
+        val pulse = object : Runnable {
+            override fun run() {
+                v.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(pulse)
     }
 
     private fun stopAlarm() {
@@ -78,6 +87,8 @@ class AlarmActivity : ComponentActivity() {
         ringtone = null
         vibrator?.cancel()
         vibrator = null
+        vibrateHandler?.removeCallbacksAndMessages(null)
+        vibrateHandler = null
         NotificationManagerCompat.from(this).cancel(AlarmReceiver.ALARM_NOTIF_ID)
     }
 }
