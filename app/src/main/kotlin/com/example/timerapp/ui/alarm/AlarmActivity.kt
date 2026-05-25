@@ -7,7 +7,9 @@ import android.os.*
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.app.NotificationManagerCompat
 import com.example.timerapp.TimerApplication
+import com.example.timerapp.alarm.AlarmReceiver
 import com.example.timerapp.ui.theme.TimerAppTheme
 
 class AlarmActivity : ComponentActivity() {
@@ -76,5 +78,6 @@ class AlarmActivity : ComponentActivity() {
         ringtone = null
         vibrator?.cancel()
         vibrator = null
+        NotificationManagerCompat.from(this).cancel(AlarmReceiver.ALARM_NOTIF_ID)
     }
 }

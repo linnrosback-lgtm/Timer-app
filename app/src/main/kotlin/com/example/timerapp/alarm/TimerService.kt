@@ -20,6 +20,11 @@ class TimerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onDestroy() {
+        super.onDestroy()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel()
         val action = intent?.action ?: ACTION_START_RUNNING
