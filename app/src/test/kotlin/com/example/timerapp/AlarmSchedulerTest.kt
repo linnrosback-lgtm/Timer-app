@@ -33,8 +33,10 @@ class AlarmSchedulerTest {
         every { prefsEditor.remove(any()) } returns prefsEditor
         mockkStatic(PendingIntent::class)
         every { PendingIntent.getBroadcast(any(), any(), any(), any()) } returns mockk()
+        every { PendingIntent.getActivity(any(), any(), any(), any()) } returns mockk()
         mockkConstructor(Intent::class)
         every { anyConstructed<Intent>().setAction(any()) } returns mockk(relaxed = true)
+        every { anyConstructed<Intent>().setFlags(any()) } returns mockk(relaxed = true)
         every { anyConstructed<Intent>().putExtra(any<String>(), any<String>()) } returns mockk(relaxed = true)
         every { anyConstructed<Intent>().putExtra(any<String>(), any<Long>()) } returns mockk(relaxed = true)
         every { context.startService(any()) } returns null
@@ -52,10 +54,10 @@ class AlarmSchedulerTest {
     }
 
     @Test
-    fun scheduleSetsExactAlarm() {
+    fun scheduleSetsAlarmClock() {
         val scheduler = AlarmScheduler(context)
         scheduler.schedule(preset)
-        verify { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
+        verify { alarmManager.setAlarmClock(any(), any()) }
     }
 
     @Test
@@ -90,7 +92,7 @@ class AlarmSchedulerTest {
         val scheduler = AlarmScheduler(context)
         scheduler.resume("Tea")
 
-        verify { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
+        verify { alarmManager.setAlarmClock(any(), any()) }
         verify { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_FIRE_TIME), more(0L)) }
         verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS) }
         verify { prefsEditor.apply() }
@@ -101,7 +103,7 @@ class AlarmSchedulerTest {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, -1L) } returns -1L
         val scheduler = AlarmScheduler(context)
         scheduler.resume("Tea")
-        verify(exactly = 0) { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
+        verify(exactly = 0) { alarmManager.setAlarmClock(any(), any()) }
     }
 
     @Test
