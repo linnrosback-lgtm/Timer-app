@@ -5,9 +5,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.timerapp.alarm.AlarmScheduler
+import com.example.timerapp.data.PresetEntity
 import io.mockk.*
-import io.mockk.unmockkAll
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -17,10 +18,10 @@ class AlarmSchedulerTest {
     private val prefs = mockk<SharedPreferences>(relaxed = true)
     private val prefsEditor = mockk<SharedPreferences.Editor>(relaxed = true)
 
+    private val preset = PresetEntity(id = 42, label = "Tea", durationMinutes = 3, isDefault = false)
+
     @After
-    fun teardown() {
-        unmockkAll()
-    }
+    fun teardown() { unmockkAll() }
 
     @Before
     fun setup() {
@@ -34,34 +35,97 @@ class AlarmSchedulerTest {
     }
 
     @Test
-    fun scheduleCallsSetExactAndAllowWhileIdle() {
+    fun schedulePersistsFireTimeAndPresetIdAndClearsPaused() {
         val scheduler = AlarmScheduler(context)
-        scheduler.schedule(10)
+        scheduler.schedule(preset)
+        verify { prefsEditor.putLong(AlarmScheduler.PREF_KEY_FIRE_TIME, any()) }
+        verify { prefsEditor.putLong(AlarmScheduler.PREF_KEY_PRESET_ID, 42L) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS) }
+        verify { prefsEditor.apply() }
+    }
+
+    @Test
+    fun scheduleSetsExactAlarm() {
+        val scheduler = AlarmScheduler(context)
+        scheduler.schedule(preset)
         verify { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
     }
 
     @Test
-    fun scheduleStoresFireTimeInPrefs() {
+    fun pauseStoresRemainingClearsFireTimeKeepsPresetIdCancelsAlarm() {
+        val now = System.currentTimeMillis()
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_FIRE_TIME, -1L) } returns now + 120_000L
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns 42L
+
         val scheduler = AlarmScheduler(context)
-        scheduler.schedule(5)
-        verify { prefsEditor.putLong(AlarmScheduler.PREF_KEY_FIRE_TIME, any()) }
+        scheduler.pause()
+
+        verify { alarmManager.cancel(any<PendingIntent>()) }
+        verify { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS), more(0L)) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_FIRE_TIME) }
+        verify(exactly = 0) { prefsEditor.remove(AlarmScheduler.PREF_KEY_PRESET_ID) }
         verify { prefsEditor.apply() }
     }
 
     @Test
-    fun cancelClearsPrefsAndCancelsAlarm() {
+    fun pauseWhenNoFireTimeIsNoOp() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_FIRE_TIME, -1L) } returns -1L
+        val scheduler = AlarmScheduler(context)
+        scheduler.pause()
+        verify(exactly = 0) { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS), any()) }
+    }
+
+    @Test
+    fun resumeSchedulesNewAlarmAndClearsPausedRemaining() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, -1L) } returns 60_000L
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns 42L
+
+        val scheduler = AlarmScheduler(context)
+        scheduler.resume()
+
+        verify { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
+        verify { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_FIRE_TIME), more(0L)) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS) }
+        verify { prefsEditor.apply() }
+    }
+
+    @Test
+    fun resumeWhenNoPausedRemainingIsNoOp() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, -1L) } returns -1L
+        val scheduler = AlarmScheduler(context)
+        scheduler.resume()
+        verify(exactly = 0) { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
+    }
+
+    @Test
+    fun cancelClearsAllThreeKeysAndCancelsAlarm() {
         val scheduler = AlarmScheduler(context)
         scheduler.cancel()
         verify { alarmManager.cancel(any<PendingIntent>()) }
         verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_FIRE_TIME) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_PRESET_ID) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS) }
         verify { prefsEditor.apply() }
     }
 
     @Test
-    fun getScheduledFireTimeReturnsMinusOneWhenNotSet() {
+    fun getScheduledPresetIdReturnsMinusOneWhenUnset() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns -1L
+        val scheduler = AlarmScheduler(context)
+        assertEquals(-1L, scheduler.getScheduledPresetId())
+    }
+
+    @Test
+    fun getPausedRemainingMsReturnsMinusOneWhenUnset() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, -1L) } returns -1L
+        val scheduler = AlarmScheduler(context)
+        assertEquals(-1L, scheduler.getPausedRemainingMs())
+    }
+
+    @Test
+    fun getScheduledFireTimeReturnsMinusOneWhenUnset() {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_FIRE_TIME, -1L) } returns -1L
         val scheduler = AlarmScheduler(context)
-        val result = scheduler.getScheduledFireTime()
-        assert(result == -1L)
+        assertEquals(-1L, scheduler.getScheduledFireTime())
     }
 }

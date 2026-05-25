@@ -117,6 +117,6 @@ class PresetViewModelTest {
         val vm = PresetViewModel(repository, scheduler)
         val preset = samplePresets[0]
         vm.startTimer(preset)
-        verify { scheduler.schedule(preset.durationMinutes) }
+        verify { scheduler.schedule(preset) }
     }
 }

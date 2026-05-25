@@ -11,9 +11,7 @@ class BootReceiver : BroadcastReceiver() {
         val fireTime = scheduler.getScheduledFireTime()
         val now = System.currentTimeMillis()
         if (fireTime > now) {
-            val remainingMs = fireTime - now
-            val remainingMinutes = (remainingMs / 60_000L).toInt().coerceAtLeast(1)
-            scheduler.schedule(remainingMinutes)
+            scheduler.rescheduleExisting()
         }
     }
 }

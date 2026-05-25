@@ -32,7 +32,7 @@ class AlarmActivity : ComponentActivity() {
                 AlarmScreen(
                     repository = app.repository,
                     onPresetSelected = { preset ->
-                        app.scheduler.schedule(preset.durationMinutes)
+                        app.scheduler.schedule(preset)
                         stopAlarm()
                         finish()
                     },
