@@ -16,10 +16,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.timerapp.data.PresetEntity
 import com.example.timerapp.util.formatMmSs
+import androidx.compose.foundation.layout.Arrangement
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: PresetViewModel) {
+fun HomeScreen(
+    viewModel: PresetViewModel,
+    showFullScreenBanner: Boolean = false,
+    onGrantFullScreen: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -37,6 +42,9 @@ fun HomeScreen(viewModel: PresetViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item { Spacer(Modifier.height(8.dp)) }
+            if (showFullScreenBanner) {
+                item { FullScreenPermissionBanner(onGrantFullScreen) }
+            }
             items(state.presets, key = { it.id }) { preset ->
                 val isActive = state.activePresetId == preset.id.toLong()
                 val isPaused = isActive && state.pausedRemainingMs != null
@@ -66,6 +74,33 @@ fun HomeScreen(viewModel: PresetViewModel) {
             onDismiss = { viewModel.dismissSheet() },
             onSave = { label, minutes -> viewModel.savePreset(label, minutes) }
         )
+    }
+}
+
+@Composable
+private fun FullScreenPermissionBanner(onGrant: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Grant \"pop-up\" permission so the alarm screen appears automatically.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            FilledTonalButton(onClick = onGrant) { Text("Grant") }
+        }
     }
 }
 

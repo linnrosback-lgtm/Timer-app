@@ -13,6 +13,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.example.timerapp.ui.home.HomeScreen
 import com.example.timerapp.ui.home.PresetViewModel
@@ -26,16 +29,40 @@ class MainActivity : ComponentActivity() {
     private val notifPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result ignored */ }
 
+    private var needsFullScreenPermission by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestExactAlarmPermissionIfNeeded()
         requestNotificationPermissionIfNeeded()
-        requestFullScreenIntentPermissionIfNeeded()
         setContent {
             TimerAppTheme {
-                HomeScreen(viewModel = viewModel)
+                HomeScreen(
+                    viewModel = viewModel,
+                    showFullScreenBanner = needsFullScreenPermission,
+                    onGrantFullScreen = { openFullScreenIntentSettings() }
+                )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        needsFullScreenPermission = checkNeedsFullScreenPermission()
+    }
+
+    private fun checkNeedsFullScreenPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        val nm = getSystemService(NotificationManager::class.java) ?: return false
+        return !nm.canUseFullScreenIntent()
+    }
+
+    private fun openFullScreenIntentSettings() {
+        startActivity(
+            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:$packageName")
+            }
+        )
     }
 
     private fun requestExactAlarmPermissionIfNeeded() {
@@ -54,18 +81,6 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    private fun requestFullScreenIntentPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
-        val nm = getSystemService(NotificationManager::class.java) ?: return
-        if (!nm.canUseFullScreenIntent()) {
-            startActivity(
-                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-            )
         }
     }
 }
