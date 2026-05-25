@@ -20,9 +20,12 @@ class AlarmScheduler(private val context: Context) {
             .putLong(PREF_KEY_PRESET_ID, preset.id.toLong())
             .remove(PREF_KEY_PAUSED_REMAINING_MS)
             .apply()
+        context.startForegroundService(
+            TimerService.startRunningIntent(context, preset.label, fireTime)
+        )
     }
 
-    fun pause() {
+    fun pause(label: String) {
         val fireTime = prefs.getLong(PREF_KEY_FIRE_TIME, -1L)
         if (fireTime <= 0L) return
         val remaining = (fireTime - System.currentTimeMillis()).coerceAtLeast(0L)
@@ -31,9 +34,10 @@ class AlarmScheduler(private val context: Context) {
             .putLong(PREF_KEY_PAUSED_REMAINING_MS, remaining)
             .remove(PREF_KEY_FIRE_TIME)
             .apply()
+        context.startService(TimerService.updatePausedIntent(context, label, remaining))
     }
 
-    fun resume() {
+    fun resume(label: String) {
         val remaining = prefs.getLong(PREF_KEY_PAUSED_REMAINING_MS, -1L)
         if (remaining <= 0L) return
         val fireTime = System.currentTimeMillis() + remaining
@@ -42,6 +46,7 @@ class AlarmScheduler(private val context: Context) {
             .putLong(PREF_KEY_FIRE_TIME, fireTime)
             .remove(PREF_KEY_PAUSED_REMAINING_MS)
             .apply()
+        context.startService(TimerService.updateRunningIntent(context, label, fireTime))
     }
 
     fun cancel() {
@@ -51,6 +56,7 @@ class AlarmScheduler(private val context: Context) {
             .remove(PREF_KEY_PRESET_ID)
             .remove(PREF_KEY_PAUSED_REMAINING_MS)
             .apply()
+        context.startService(TimerService.stopIntent(context))
     }
 
     fun rescheduleExisting() {

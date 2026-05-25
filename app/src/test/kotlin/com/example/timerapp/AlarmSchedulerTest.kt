@@ -3,6 +3,7 @@ package com.example.timerapp
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import com.example.timerapp.alarm.AlarmScheduler
 import com.example.timerapp.data.PresetEntity
@@ -32,6 +33,12 @@ class AlarmSchedulerTest {
         every { prefsEditor.remove(any()) } returns prefsEditor
         mockkStatic(PendingIntent::class)
         every { PendingIntent.getBroadcast(any(), any(), any(), any()) } returns mockk()
+        mockkConstructor(Intent::class)
+        every { anyConstructed<Intent>().setAction(any()) } returns mockk(relaxed = true)
+        every { anyConstructed<Intent>().putExtra(any<String>(), any<String>()) } returns mockk(relaxed = true)
+        every { anyConstructed<Intent>().putExtra(any<String>(), any<Long>()) } returns mockk(relaxed = true)
+        every { context.startService(any()) } returns null
+        every { context.startForegroundService(any()) } returns null
     }
 
     @Test
@@ -58,7 +65,7 @@ class AlarmSchedulerTest {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns 42L
 
         val scheduler = AlarmScheduler(context)
-        scheduler.pause()
+        scheduler.pause("Tea")
 
         verify { alarmManager.cancel(any<PendingIntent>()) }
         verify { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS), more(0L)) }
@@ -71,7 +78,7 @@ class AlarmSchedulerTest {
     fun pauseWhenNoFireTimeIsNoOp() {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_FIRE_TIME, -1L) } returns -1L
         val scheduler = AlarmScheduler(context)
-        scheduler.pause()
+        scheduler.pause("Tea")
         verify(exactly = 0) { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS), any()) }
     }
 
@@ -81,7 +88,7 @@ class AlarmSchedulerTest {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns 42L
 
         val scheduler = AlarmScheduler(context)
-        scheduler.resume()
+        scheduler.resume("Tea")
 
         verify { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
         verify { prefsEditor.putLong(eq(AlarmScheduler.PREF_KEY_FIRE_TIME), more(0L)) }
@@ -93,7 +100,7 @@ class AlarmSchedulerTest {
     fun resumeWhenNoPausedRemainingIsNoOp() {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, -1L) } returns -1L
         val scheduler = AlarmScheduler(context)
-        scheduler.resume()
+        scheduler.resume("Tea")
         verify(exactly = 0) { alarmManager.setExactAndAllowWhileIdle(any(), any(), any()) }
     }
 
