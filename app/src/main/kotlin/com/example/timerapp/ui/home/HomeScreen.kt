@@ -15,23 +15,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.timerapp.data.PresetEntity
+import com.example.timerapp.util.formatMmSs
+import androidx.compose.foundation.layout.Arrangement
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: PresetViewModel) {
+fun HomeScreen(
+    viewModel: PresetViewModel,
+    showFullScreenBanner: Boolean = false,
+    onGrantFullScreen: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    var pendingSnackbar by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(pendingSnackbar) {
-        pendingSnackbar?.let {
-            snackbarHostState.showSnackbar(it)
-            pendingSnackbar = null
-        }
-    }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.openAddSheet() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add preset")
@@ -46,13 +42,24 @@ fun HomeScreen(viewModel: PresetViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item { Spacer(Modifier.height(8.dp)) }
+            if (showFullScreenBanner) {
+                item { FullScreenPermissionBanner(onGrantFullScreen) }
+            }
             items(state.presets, key = { it.id }) { preset ->
+                val isActive = state.activePresetId == preset.id.toLong()
+                val isPaused = isActive && state.pausedRemainingMs != null
+                val isRunning = isActive && state.fireTimeMillis != null
+                val anyTimerOwned = state.activePresetId != null
                 PresetItem(
                     preset = preset,
-                    onStart = {
-                        viewModel.startTimer(preset)
-                        pendingSnackbar = "Timer set for ${preset.durationMinutes} min"
-                    },
+                    isRunning = isRunning,
+                    isPaused = isPaused,
+                    startEnabled = !anyTimerOwned,
+                    remainingSeconds = if (isActive) state.remainingSeconds else 0L,
+                    onStart = { viewModel.startTimer(preset) },
+                    onPause = { viewModel.pauseTimer() },
+                    onResume = { viewModel.resumeTimer() },
+                    onStop = { viewModel.stopTimer() },
                     onEdit = { viewModel.openEditSheet(preset) },
                     onDelete = { viewModel.deletePreset(preset) }
                 )
@@ -71,9 +78,43 @@ fun HomeScreen(viewModel: PresetViewModel) {
 }
 
 @Composable
+private fun FullScreenPermissionBanner(onGrant: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Grant \"pop-up\" permission so the alarm screen appears automatically.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            FilledTonalButton(onClick = onGrant) { Text("Grant") }
+        }
+    }
+}
+
+@Composable
 private fun PresetItem(
     preset: PresetEntity,
+    isRunning: Boolean,
+    isPaused: Boolean,
+    startEnabled: Boolean,
+    remainingSeconds: Long,
     onStart: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -86,8 +127,13 @@ private fun PresetItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = preset.label, style = MaterialTheme.typography.titleMedium)
+                val subtitle = when {
+                    isRunning -> formatMmSs(remainingSeconds * 1000L)
+                    isPaused -> "Paused — ${formatMmSs(remainingSeconds * 1000L)}"
+                    else -> "${preset.durationMinutes} min"
+                }
                 Text(
-                    text = "${preset.durationMinutes} min",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -98,8 +144,33 @@ private fun PresetItem(
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
-            Button(onClick = onStart) {
-                Text("Start")
+            Spacer(Modifier.width(4.dp))
+            when {
+                isRunning -> {
+                    FilledTonalButton(onClick = onPause) { Text("Pause") }
+                    Spacer(Modifier.width(4.dp))
+                    Button(
+                        onClick = onStop,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) { Text("Stop") }
+                }
+                isPaused -> {
+                    FilledTonalButton(onClick = onResume) { Text("Resume") }
+                    Spacer(Modifier.width(4.dp))
+                    Button(
+                        onClick = onStop,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) { Text("Stop") }
+                }
+                else -> {
+                    Button(onClick = onStart, enabled = startEnabled) { Text("Start") }
+                }
             }
         }
     }

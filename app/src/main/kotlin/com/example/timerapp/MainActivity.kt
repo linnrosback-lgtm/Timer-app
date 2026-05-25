@@ -1,13 +1,23 @@
 package com.example.timerapp
 
+import android.Manifest
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import com.example.timerapp.ui.home.HomeScreen
 import com.example.timerapp.ui.home.PresetViewModel
 import com.example.timerapp.ui.theme.TimerAppTheme
@@ -17,13 +27,54 @@ class MainActivity : ComponentActivity() {
         (application as TimerApplication).viewModelFactory
     }
 
+    private val notifPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* result ignored */ }
+
+    private var needsFullScreenPermission by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestExactAlarmPermissionIfNeeded()
+        requestNotificationPermissionIfNeeded()
+        requestBatteryOptimizationExemptionIfNeeded()
         setContent {
             TimerAppTheme {
-                HomeScreen(viewModel = viewModel)
+                HomeScreen(
+                    viewModel = viewModel,
+                    showFullScreenBanner = needsFullScreenPermission,
+                    onGrantFullScreen = { openFullScreenIntentSettings() }
+                )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        needsFullScreenPermission = checkNeedsFullScreenPermission()
+    }
+
+    private fun checkNeedsFullScreenPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        val nm = getSystemService(NotificationManager::class.java) ?: return false
+        return !nm.canUseFullScreenIntent()
+    }
+
+    private fun openFullScreenIntentSettings() {
+        startActivity(
+            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:$packageName")
+            }
+        )
+    }
+
+    private fun requestBatteryOptimizationExemptionIfNeeded() {
+        val pm = getSystemService(PowerManager::class.java) ?: return
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
         }
     }
 
@@ -33,6 +84,16 @@ class MainActivity : ComponentActivity() {
             if (alarmManager?.canScheduleExactAlarms() == false) {
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
             }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }
