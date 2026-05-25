@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.example.timerapp.MainActivity
 import com.example.timerapp.data.PresetEntity
 
 class AlarmScheduler(private val context: Context) {
@@ -14,7 +15,7 @@ class AlarmScheduler(private val context: Context) {
     fun schedule(preset: PresetEntity) {
         val durationMs = preset.durationMinutes * 60_000L
         val fireTime = System.currentTimeMillis() + durationMs
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireTime, buildPendingIntent())
+        setAlarmClock(fireTime)
         prefs.edit()
             .putLong(PREF_KEY_FIRE_TIME, fireTime)
             .putLong(PREF_KEY_PRESET_ID, preset.id.toLong())
@@ -41,7 +42,7 @@ class AlarmScheduler(private val context: Context) {
         val remaining = prefs.getLong(PREF_KEY_PAUSED_REMAINING_MS, -1L)
         if (remaining <= 0L) return
         val fireTime = System.currentTimeMillis() + remaining
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireTime, buildPendingIntent())
+        setAlarmClock(fireTime)
         prefs.edit()
             .putLong(PREF_KEY_FIRE_TIME, fireTime)
             .remove(PREF_KEY_PAUSED_REMAINING_MS)
@@ -62,13 +63,27 @@ class AlarmScheduler(private val context: Context) {
     fun rescheduleExisting() {
         val fireTime = prefs.getLong(PREF_KEY_FIRE_TIME, -1L)
         if (fireTime > System.currentTimeMillis()) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireTime, buildPendingIntent())
+            setAlarmClock(fireTime)
         }
     }
 
     fun getScheduledFireTime(): Long = prefs.getLong(PREF_KEY_FIRE_TIME, -1L)
     fun getScheduledPresetId(): Long = prefs.getLong(PREF_KEY_PRESET_ID, -1L)
     fun getPausedRemainingMs(): Long = prefs.getLong(PREF_KEY_PAUSED_REMAINING_MS, -1L)
+
+    private fun setAlarmClock(fireTime: Long) {
+        val showIntent = PendingIntent.getActivity(
+            context, REQUEST_CODE_SHOW,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(fireTime, showIntent),
+            buildPendingIntent()
+        )
+    }
 
     private fun buildPendingIntent(): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java)
@@ -84,5 +99,6 @@ class AlarmScheduler(private val context: Context) {
         const val PREF_KEY_PAUSED_REMAINING_MS = "alarm_paused_remaining_ms"
         private const val PREFS_NAME = "timer_prefs"
         private const val REQUEST_CODE = 1001
+        private const val REQUEST_CODE_SHOW = 1002
     }
 }
