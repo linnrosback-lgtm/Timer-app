@@ -8,7 +8,15 @@
         "source": "com.example.timerapp-main-67:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
+        "merged": "com.example.timerapp-debug-65:/drawable_ic_stat_timer.xml.flat",
+        "source": "com.example.timerapp-main-67:/drawable/ic_stat_timer.xml"
+    },
+    {
         "merged": "com.example.timerapp-debug-65:/drawable_ic_launcher_foreground.xml.flat",
         "source": "com.example.timerapp-main-67:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.example.timerapp-debug-65:/drawable_ic_stat_pause.xml.flat",
+        "source": "com.example.timerapp-main-67:/drawable/ic_stat_pause.xml"
     }
 ]

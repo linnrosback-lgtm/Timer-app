@@ -2934,6 +2934,8 @@ drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
 drawable ic_search_black_24
+drawable ic_stat_pause
+drawable ic_stat_timer
 drawable indeterminate_static
 drawable m3_avd_hide_password
 drawable m3_avd_show_password

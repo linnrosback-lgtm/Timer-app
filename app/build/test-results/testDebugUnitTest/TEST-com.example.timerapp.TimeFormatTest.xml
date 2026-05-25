@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.timerapp.TimeFormatTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-05-25T12:51:53.307Z" hostname="LIMPAN" time="0.002">
+  <properties/>
+  <testcase name="oneSecondFormatsAsZeroOne" classname="com.example.timerapp.TimeFormatTest" time="0.001"/>
+  <testcase name="negativeMillisClampsToZero" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <testcase name="tenMinutesShowsTwoDigitMinutes" classname="com.example.timerapp.TimeFormatTest" time="0.001"/>
+  <testcase name="zeroMillisFormatsAsZeroZero" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <testcase name="fiveMinutesThirtySevenSeconds" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <testcase name="oneMinuteFormatsAsOneZero" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <testcase name="ninetyNineMinutesFiftyNineSeconds" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <testcase name="subSecondMillisTruncatesDown" classname="com.example.timerapp.TimeFormatTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

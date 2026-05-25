@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.timerapp.PresetViewModelTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-05-25T12:46:26.106Z" hostname="LIMPAN" time="327.2">
+  <properties/>
+  <testcase name="initRestoresPausedStateWhenPausedRemainingPresent" classname="com.example.timerapp.PresetViewModelTest" time="0.131"/>
+  <testcase name="startTimerSchedulesAndSetsRunningState" classname="com.example.timerapp.PresetViewModelTest" time="179.004"/>
+  <testcase name="savePresetWithEditingUpdatesExistingPreset" classname="com.example.timerapp.PresetViewModelTest" time="0.008"/>
+  <testcase name="openAddSheetSetsBottomSheetOpenAndNullEditing" classname="com.example.timerapp.PresetViewModelTest" time="0.005"/>
+  <testcase name="dismissSheetClosesBottomSheetAndClearsEditing" classname="com.example.timerapp.PresetViewModelTest" time="0.004"/>
+  <testcase name="initClearsExpiredSchedulerStateAndStartsIdle" classname="com.example.timerapp.PresetViewModelTest" time="0.007"/>
+  <testcase name="stopWhilePausedClearsAllActiveFields" classname="com.example.timerapp.PresetViewModelTest" time="0.006"/>
+  <testcase name="resumeAfterPauseResumesTickingAndCallsScheduler" classname="com.example.timerapp.PresetViewModelTest" time="59.003"/>
+  <testcase name="initRestoresRunningStateWhenFireTimeInFuture" classname="com.example.timerapp.PresetViewModelTest" time="89.003"/>
+  <testcase name="openEditSheetSetsEditingPreset" classname="com.example.timerapp.PresetViewModelTest" time="0.004"/>
+  <testcase name="deletePresetCallsRepositoryDelete" classname="com.example.timerapp.PresetViewModelTest" time="0.005"/>
+  <testcase name="initialStateHasPresetsFromRepository" classname="com.example.timerapp.PresetViewModelTest" time="0.005"/>
+  <testcase name="savePresetWithNullEditingInsertsNewPreset" classname="com.example.timerapp.PresetViewModelTest" time="0.004"/>
+  <testcase name="stopWhileRunningClearsAllActiveFields" classname="com.example.timerapp.PresetViewModelTest" time="0.004"/>
+  <testcase name="pauseFreezesRemainingClearsFireTimeAndCallsScheduler" classname="com.example.timerapp.PresetViewModelTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
