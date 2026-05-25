@@ -7,6 +7,8 @@ import com.example.timerapp.ui.alarm.AlarmActivity
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        context.startService(TimerService.stopIntent(context))
+
         val alarmIntent = Intent(context, AlarmActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
