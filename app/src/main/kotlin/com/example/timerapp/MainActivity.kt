@@ -67,7 +67,8 @@ class MainActivity : ComponentActivity() {
                     HomeScreen(
                         viewModel = viewModel,
                         showFullScreenBanner = needsFullScreenPermission,
-                        onGrantFullScreen = { openFullScreenIntentSettings() }
+                        onGrantFullScreen = { openFullScreenIntentSettings() },
+                        onViewActive = { viewModel.viewActiveTimer() }
                     )
                 }
             }
