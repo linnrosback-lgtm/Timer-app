@@ -19,7 +19,7 @@ class AlarmSchedulerTest {
     private val prefs = mockk<SharedPreferences>(relaxed = true)
     private val prefsEditor = mockk<SharedPreferences.Editor>(relaxed = true)
 
-    private val preset = PresetEntity(id = 42, label = "Tea", durationMinutes = 3, isDefault = false)
+    private val preset = PresetEntity(id = 42, label = "Tea", durationSeconds = 3, isDefault = false)
 
     @After
     fun teardown() { unmockkAll() }
@@ -136,5 +136,19 @@ class AlarmSchedulerTest {
         every { prefs.getLong(AlarmScheduler.PREF_KEY_FIRE_TIME, -1L) } returns -1L
         val scheduler = AlarmScheduler(context)
         assertEquals(-1L, scheduler.getScheduledFireTime())
+    }
+
+    @Test
+    fun restartPausedCancelsAlarmWritesDurationAndKeepsPresetId() {
+        every { prefs.getLong(AlarmScheduler.PREF_KEY_PRESET_ID, -1L) } returns 42L
+
+        val scheduler = AlarmScheduler(context)
+        scheduler.restartPaused(label = "Tea", durationMs = 180_000L)
+
+        verify { alarmManager.cancel(any<PendingIntent>()) }
+        verify { prefsEditor.putLong(AlarmScheduler.PREF_KEY_PAUSED_REMAINING_MS, 180_000L) }
+        verify { prefsEditor.remove(AlarmScheduler.PREF_KEY_FIRE_TIME) }
+        verify(exactly = 0) { prefsEditor.remove(AlarmScheduler.PREF_KEY_PRESET_ID) }
+        verify { prefsEditor.apply() }
     }
 }

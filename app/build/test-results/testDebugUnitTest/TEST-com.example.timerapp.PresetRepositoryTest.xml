@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.timerapp.PresetRepositoryTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-05-25T12:46:25.884Z" hostname="LIMPAN" time="0.218">
+  <properties/>
+  <testcase name="insertDelegatesToDao" classname="com.example.timerapp.PresetRepositoryTest" time="0.155"/>
+  <testcase name="updateDelegatesToDao" classname="com.example.timerapp.PresetRepositoryTest" time="0.004"/>
+  <testcase name="getAllDelegatesToDao" classname="com.example.timerapp.PresetRepositoryTest" time="0.055"/>
+  <testcase name="deleteDelegatesToDao" classname="com.example.timerapp.PresetRepositoryTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

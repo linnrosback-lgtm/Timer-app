@@ -13,7 +13,7 @@ class AlarmScheduler(private val context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun schedule(preset: PresetEntity) {
-        val durationMs = preset.durationMinutes * 60_000L
+        val durationMs = preset.durationSeconds * 1_000L
         val fireTime = System.currentTimeMillis() + durationMs
         setAlarmClock(fireTime)
         prefs.edit()
@@ -48,6 +48,15 @@ class AlarmScheduler(private val context: Context) {
             .remove(PREF_KEY_PAUSED_REMAINING_MS)
             .apply()
         context.startService(TimerService.updateRunningIntent(context, label, fireTime))
+    }
+
+    fun restartPaused(label: String, durationMs: Long) {
+        alarmManager.cancel(buildPendingIntent())
+        prefs.edit()
+            .putLong(PREF_KEY_PAUSED_REMAINING_MS, durationMs)
+            .remove(PREF_KEY_FIRE_TIME)
+            .apply()
+        context.startService(TimerService.updatePausedIntent(context, label, durationMs))
     }
 
     fun cancel() {

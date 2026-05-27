@@ -19,6 +19,7 @@ data class HomeUiState(
     val fireTimeMillis: Long? = null,
     val pausedRemainingMs: Long? = null,
     val remainingSeconds: Long = 0L,
+    val isViewingActiveTimer: Boolean = false,
 )
 
 class PresetViewModel(
@@ -86,13 +87,26 @@ class PresetViewModel(
         _uiState.update { it.copy(isBottomSheetOpen = false, editingPreset = null) }
     }
 
-    fun savePreset(label: String, durationMinutes: Int) {
+    fun savePreset(label: String, durationSeconds: Int, ringtoneUri: String? = null) {
         val editing = _uiState.value.editingPreset
         viewModelScope.launch {
             if (editing == null) {
-                repository.insert(PresetEntity(label = label, durationMinutes = durationMinutes, isDefault = false))
+                repository.insert(
+                    PresetEntity(
+                        label = label,
+                        durationSeconds = durationSeconds,
+                        isDefault = false,
+                        ringtoneUri = ringtoneUri
+                    )
+                )
             } else {
-                repository.update(editing.copy(label = label, durationMinutes = durationMinutes))
+                repository.update(
+                    editing.copy(
+                        label = label,
+                        durationSeconds = durationSeconds,
+                        ringtoneUri = ringtoneUri
+                    )
+                )
             }
         }
         dismissSheet()
@@ -110,7 +124,8 @@ class PresetViewModel(
                 activePresetId = preset.id.toLong(),
                 fireTimeMillis = fireTime,
                 pausedRemainingMs = null,
-                remainingSeconds = ((fireTime - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                remainingSeconds = ((fireTime - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L),
+                isViewingActiveTimer = true
             )
         }
         startTicking(fireTime)
@@ -160,7 +175,33 @@ class PresetViewModel(
                 activePresetId = null,
                 fireTimeMillis = null,
                 pausedRemainingMs = null,
-                remainingSeconds = 0L
+                remainingSeconds = 0L,
+                isViewingActiveTimer = false
+            )
+        }
+    }
+
+    fun viewActiveTimer() {
+        _uiState.update { it.copy(isViewingActiveTimer = true) }
+    }
+
+    fun exitActiveTimer() {
+        _uiState.update { it.copy(isViewingActiveTimer = false) }
+    }
+
+    fun restartTimer() {
+        val state = _uiState.value
+        val activeId = state.activePresetId ?: return
+        val preset = state.presets.firstOrNull { it.id.toLong() == activeId } ?: return
+        val durationMs = preset.durationSeconds * 1_000L
+        tickJob?.cancel()
+        tickJob = null
+        scheduler.restartPaused(preset.label, durationMs)
+        _uiState.update {
+            it.copy(
+                fireTimeMillis = null,
+                pausedRemainingMs = durationMs,
+                remainingSeconds = preset.durationSeconds.toLong()
             )
         }
     }
@@ -176,7 +217,8 @@ class PresetViewModel(
                         it.copy(
                             activePresetId = null,
                             fireTimeMillis = null,
-                            pausedRemainingMs = null
+                            pausedRemainingMs = null,
+                            isViewingActiveTimer = false
                         )
                     }
                     break

@@ -1,10 +1,17 @@
 package com.example.timerapp.ui.home
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -12,9 +19,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.timerapp.R
 import com.example.timerapp.data.PresetEntity
+import com.example.timerapp.util.formatHhMmSs
 import com.example.timerapp.util.formatMmSs
 import androidx.compose.foundation.layout.Arrangement
 
@@ -23,7 +34,8 @@ import androidx.compose.foundation.layout.Arrangement
 fun HomeScreen(
     viewModel: PresetViewModel,
     showFullScreenBanner: Boolean = false,
-    onGrantFullScreen: () -> Unit = {}
+    onGrantFullScreen: () -> Unit = {},
+    onViewActive: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -61,7 +73,8 @@ fun HomeScreen(
                     onResume = { viewModel.resumeTimer() },
                     onStop = { viewModel.stopTimer() },
                     onEdit = { viewModel.openEditSheet(preset) },
-                    onDelete = { viewModel.deletePreset(preset) }
+                    onDelete = { viewModel.deletePreset(preset) },
+                    onViewActive = onViewActive
                 )
             }
             item { Spacer(Modifier.height(80.dp)) }
@@ -72,7 +85,7 @@ fun HomeScreen(
         PresetBottomSheet(
             editing = state.editingPreset,
             onDismiss = { viewModel.dismissSheet() },
-            onSave = { label, minutes -> viewModel.savePreset(label, minutes) }
+            onSave = { label, seconds, uri -> viewModel.savePreset(label, seconds, uri) }
         )
     }
 }
@@ -116,9 +129,18 @@ private fun PresetItem(
     onResume: () -> Unit,
     onStop: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onViewActive: () -> Unit = {}
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isRunning || isPaused)
+                    Modifier.clickable(onClick = onViewActive)
+                else Modifier
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,7 +152,7 @@ private fun PresetItem(
                 val subtitle = when {
                     isRunning -> formatMmSs(remainingSeconds * 1000L)
                     isPaused -> "Paused — ${formatMmSs(remainingSeconds * 1000L)}"
-                    else -> "${preset.durationMinutes} min"
+                    else -> formatHhMmSs(preset.durationSeconds)
                 }
                 Text(
                     text = subtitle,
@@ -181,46 +203,116 @@ private fun PresetItem(
 private fun PresetBottomSheet(
     editing: PresetEntity?,
     onDismiss: () -> Unit,
-    onSave: (String, Int) -> Unit
+    onSave: (String, Int, String?) -> Unit
 ) {
     var label by remember(editing) { mutableStateOf(editing?.label ?: "") }
-    var durationText by remember(editing) { mutableStateOf(editing?.durationMinutes?.toString() ?: "") }
-    val isValid = label.isNotBlank() && durationText.toIntOrNull()?.let { it > 0 } == true
+    var durationSeconds by remember(editing) { mutableStateOf(editing?.durationSeconds ?: 0) }
+    var ringtoneUri by remember(editing) { mutableStateOf(editing?.ringtoneUri) }
+    val isValid = label.isNotBlank() && durationSeconds > 0
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val context = LocalContext.current
+    val defaultRingtoneLabel = stringResource(R.string.ringtone_default)
+    val ringtoneLabel = remember(ringtoneUri, defaultRingtoneLabel) {
+        ringtoneUri?.let {
+            runCatching { RingtoneManager.getRingtone(context, Uri.parse(it))?.getTitle(context) }.getOrNull()
+        } ?: defaultRingtoneLabel
+    }
+    val ringtonePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            @Suppress("DEPRECATION")
+            val picked: Uri? = result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            ringtoneUri = picked?.toString()
+        }
+    }
+    fun launchRingtonePicker() {
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.ringtone))
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(
+                RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            )
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            putExtra(
+                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                ringtoneUri?.let { Uri.parse(it) }
+            )
+        }
+        ringtonePicker.launch(intent)
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = if (editing == null) "Add preset" else "Edit preset",
-                style = MaterialTheme.typography.headlineSmall
+            Spacer(Modifier.height(24.dp))
+            DurationWheelPicker(
+                totalSeconds = durationSeconds,
+                onValueChange = { durationSeconds = it }
             )
-            OutlinedTextField(
+            TextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Label") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = durationText,
-                onValueChange = { durationText = it },
-                label = { Text("Duration (minutes)") },
+                label = { Text(stringResource(R.string.preset_label_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                )
             )
+            RingtoneRow(value = ringtoneLabel, onClick = { launchRingtonePicker() })
+            Spacer(Modifier.height(8.dp))
             Button(
-                onClick = { onSave(label.trim(), durationText.toIntOrNull() ?: 0) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isValid
+                onClick = { onSave(label.trim(), durationSeconds, ringtoneUri) },
+                enabled = isValid,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                )
             ) {
-                Text("Save")
+                Text(stringResource(if (editing == null) R.string.action_add else R.string.action_save))
             }
         }
+    }
+}
+
+@Composable
+private fun RingtoneRow(value: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.ringtone),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

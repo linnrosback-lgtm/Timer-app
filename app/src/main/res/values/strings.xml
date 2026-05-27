@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">Timer App</string>
+    <string name="preset_label_hint">Label</string>
+    <string name="ringtone">Ringtone</string>
+    <string name="ringtone_default">Default</string>
+    <string name="action_add">Add</string>
+    <string name="action_save">Save</string>
+    <string name="active_timer_overflow_menu">Fler alternativ</string>
+    <string name="active_timer_restart">Starta om</string>
+    <string name="active_timer_pause">Pausa</string>
+    <string name="active_timer_play">Återuppta</string>
+    <string name="active_timer_stop">Stoppa</string>
+    <string name="active_timer_rings_at">Ringer kl.</string>
 </resources>

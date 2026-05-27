@@ -24,8 +24,8 @@ class PresetViewModelTest {
     private val repository = mockk<PresetRepository>(relaxed = true)
     private val scheduler = mockk<AlarmScheduler>(relaxed = true)
 
-    private val tea = PresetEntity(id = 1, label = "Tea", durationMinutes = 3, isDefault = true)
-    private val coffee = PresetEntity(id = 2, label = "Coffee", durationMinutes = 5, isDefault = true)
+    private val tea = PresetEntity(id = 1, label = "Tea", durationSeconds = 3, isDefault = true)
+    private val coffee = PresetEntity(id = 2, label = "Coffee", durationSeconds = 5, isDefault = true)
     private val samplePresets = listOf(tea, coffee)
 
     @Before
@@ -95,16 +95,16 @@ class PresetViewModelTest {
     fun savePresetWithNullEditingInsertsNewPreset() = runTest {
         val vm = PresetViewModel(repository, scheduler)
         vm.openAddSheet()
-        vm.savePreset(label = "New", durationMinutes = 20)
-        coVerify { repository.insert(PresetEntity(label = "New", durationMinutes = 20, isDefault = false)) }
+        vm.savePreset(label = "New", durationSeconds = 20)
+        coVerify { repository.insert(PresetEntity(label = "New", durationSeconds = 20, isDefault = false)) }
     }
 
     @Test
     fun savePresetWithEditingUpdatesExistingPreset() = runTest {
         val vm = PresetViewModel(repository, scheduler)
         vm.openEditSheet(tea)
-        vm.savePreset(label = "Updated", durationMinutes = 7)
-        coVerify { repository.update(tea.copy(label = "Updated", durationMinutes = 7)) }
+        vm.savePreset(label = "Updated", durationSeconds = 7)
+        coVerify { repository.update(tea.copy(label = "Updated", durationSeconds = 7)) }
     }
 
     @Test
@@ -244,6 +244,108 @@ class PresetViewModelTest {
         verify { scheduler.cancel() }
         vm.uiState.test {
             val state = awaitItem()
+            assertNull(state.activePresetId)
+        }
+    }
+
+    // ---- active-timer navigation flag ----
+
+    @Test
+    fun startTimerSetsIsViewingActiveTimer() = runTest {
+        val now = System.currentTimeMillis()
+        every { scheduler.getScheduledFireTime() } returns now + 60_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        vm.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.isViewingActiveTimer)
+        }
+    }
+
+    @Test
+    fun exitActiveTimerClearsFlag() = runTest {
+        val now = System.currentTimeMillis()
+        every { scheduler.getScheduledFireTime() } returns now + 60_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        vm.exitActiveTimer()
+        vm.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isViewingActiveTimer)
+        }
+    }
+
+    @Test
+    fun viewActiveTimerSetsFlag() = runTest {
+        val vm = PresetViewModel(repository, scheduler)
+        vm.viewActiveTimer()
+        vm.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.isViewingActiveTimer)
+        }
+    }
+
+    @Test
+    fun stopTimerClearsIsViewingActiveTimer() = runTest {
+        val now = System.currentTimeMillis()
+        every { scheduler.getScheduledFireTime() } returns now + 60_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        vm.stopTimer()
+        vm.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isViewingActiveTimer)
+        }
+    }
+
+    // ---- restartTimer ----
+
+    @Test
+    fun restartTimerSetsFullDurationPausedKeepsActivePresetId() = runTest {
+        val now = System.currentTimeMillis()
+        every { scheduler.getScheduledFireTime() } returns now + 60_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea) // tea.durationSeconds = 3
+        vm.restartTimer()
+        verify { scheduler.restartPaused("Tea", 3_000L) }
+        vm.uiState.test {
+            val state = awaitItem()
+            assertEquals(1L, state.activePresetId)
+            assertNull(state.fireTimeMillis)
+            assertEquals(3_000L, state.pausedRemainingMs)
+            assertEquals(3L, state.remainingSeconds)
+        }
+    }
+
+    @Test
+    fun restartTimerWhilePausedAlsoResets() = runTest {
+        val now = System.currentTimeMillis()
+        every { scheduler.getScheduledFireTime() } returns now + 60_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        vm.pauseTimer()
+        vm.restartTimer()
+        verify { scheduler.restartPaused("Tea", 3_000L) }
+        vm.uiState.test {
+            val state = awaitItem()
+            assertEquals(1L, state.activePresetId)
+            assertNull(state.fireTimeMillis)
+            assertEquals(3_000L, state.pausedRemainingMs)
+        }
+    }
+
+    @Test
+    fun timerExpiryInStartTickingClearsIsViewingActiveTimer() = runTest {
+        val now = System.currentTimeMillis()
+        // Fire time in the past so remaining == 0 on first tick (no delay needed)
+        every { scheduler.getScheduledFireTime() } returns now - 1_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        // With UnconfinedTestDispatcher the tick loop runs eagerly: remaining == 0
+        // triggers the expiry branch synchronously before the assertion below.
+        vm.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isViewingActiveTimer)
             assertNull(state.activePresetId)
         }
     }
