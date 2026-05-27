@@ -333,4 +333,20 @@ class PresetViewModelTest {
             assertEquals(3_000L, state.pausedRemainingMs)
         }
     }
+
+    @Test
+    fun timerExpiryInStartTickingClearsIsViewingActiveTimer() = runTest {
+        val now = System.currentTimeMillis()
+        // Fire time in the past so remaining == 0 on first tick (no delay needed)
+        every { scheduler.getScheduledFireTime() } returns now - 1_000L
+        val vm = PresetViewModel(repository, scheduler)
+        vm.startTimer(tea)
+        // With UnconfinedTestDispatcher the tick loop runs eagerly: remaining == 0
+        // triggers the expiry branch synchronously before the assertion below.
+        vm.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isViewingActiveTimer)
+            assertNull(state.activePresetId)
+        }
+    }
 }
